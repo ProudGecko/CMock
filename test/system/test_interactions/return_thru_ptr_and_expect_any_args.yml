@@ -39,6 +39,7 @@
       void ptr_ret_abstract(abs_struct *r);
       void ptr_ret_abstract_array(abs_struct *r, int len);
       void ptr_ret_const_int(int *r, const int *s);
+      void ptr_ret_int_const(int *r, int * const s);
       void ptr_ret_string(char *s);
 
   :source:
@@ -90,8 +91,7 @@
           ptr_ret_int(&r);
           TEST_ASSERT_EQUAL(8, r);
           ptr_ret_int(&r);
-          TEST_ASSERT_EQUAL(16, r);
-
+          TEST_ASSERT_EQUAL(16, r); 
         }
 
     - :pass: TRUE
@@ -209,6 +209,14 @@
 
         #if defined(ptr_ret_const_int_ReturnThruPtr_s)
             TEST_FAIL_MESSAGE("ReturnThruPtr defined for a const pointer argument.");
+        #endif
+
+        #if !defined(ptr_ret_int_const_ReturnThruPtr_r)
+            TEST_FAIL_MESSAGE("ReturnThruPtr not defined for a pointer argument.");
+        #endif
+
+        #if !defined(ptr_ret_int_const_ReturnThruPtr_s)
+            TEST_FAIL_MESSAGE("ReturnThruPtr not defined for a pointer const argument.");
         #endif
         }
 

@@ -741,7 +741,9 @@ class CMockHeaderParserTest < Test::Unit::TestCase
   should "be ok with structs inside of function declarations" do
 
     source = "int DrHorrible(struct SingAlong Blog);\n" +
-             "void Penny(struct const _KeepYourHeadUp_ * const BillyBuddy);\n" +
+             "void Penny1(struct const _KeepYourHeadUp_ * BillyBuddy);\n" +
+             "void Penny2(struct _KeepYourHeadUp_ * const BillyBuddy);\n" +
+             "void Penny3(struct const _KeepYourHeadUp_ * const BillyBuddy);\n" +
              "struct TheseArentTheHammer CaptainHammer(void);\n"
 
     expected = [{ :var_arg=>nil,
@@ -767,7 +769,37 @@ class CMockHeaderParserTest < Test::Unit::TestCase
                               :str    => "void cmock_to_return",
                               :void?  => true
                             },
-                  :name=>"Penny",
+                  :name=>"Penny1",
+                  :modifier=>"",
+                  :contains_ptr? => true,
+                  :args=>[ {:type=>"struct _KeepYourHeadUp_*", :name=>"BillyBuddy", :ptr? => true, :const? => true} ],
+                  :args_string=>"struct const _KeepYourHeadUp_* BillyBuddy",
+                  :args_call=>"BillyBuddy"
+                },
+                { :var_arg=>nil,
+                  :return=> { :type   => "void",
+                              :name   => 'cmock_to_return',
+                              :ptr?   => false,
+                              :const? => false,
+                              :str    => "void cmock_to_return",
+                              :void?  => true
+                            },
+                  :name=>"Penny2",
+                  :modifier=>"",
+                  :contains_ptr? => true,
+                  :args=>[ {:type=>"struct _KeepYourHeadUp_*", :name=>"BillyBuddy", :ptr? => true, :const? => false} ],
+                  :args_string=>"struct _KeepYourHeadUp_* const BillyBuddy",
+                  :args_call=>"BillyBuddy"
+                },
+                { :var_arg=>nil,
+                  :return=> { :type   => "void",
+                              :name   => 'cmock_to_return',
+                              :ptr?   => false,
+                              :const? => false,
+                              :str    => "void cmock_to_return",
+                              :void?  => true
+                            },
+                  :name=>"Penny3",
                   :modifier=>"",
                   :contains_ptr? => true,
                   :args=>[ {:type=>"struct _KeepYourHeadUp_*", :name=>"BillyBuddy", :ptr? => true, :const? => true} ],
@@ -815,7 +847,7 @@ class CMockHeaderParserTest < Test::Unit::TestCase
   end
 
   should "not be thwarted by variables named with primitive types as part of the name" do
-    source = "void ApplePeel(const unsigned int const_param, int int_param, int integer, char character, int* const constant)"
+    source = "void ApplePeel(const unsigned int const_param, int int_param, int integer, char character, int* const constant, const int * const_int_ptr)"
     expected = [{ :var_arg=>nil,
                  :return=>{ :type   => "void",
                             :name   => 'cmock_to_return',
@@ -827,20 +859,21 @@ class CMockHeaderParserTest < Test::Unit::TestCase
                  :name=>"ApplePeel",
                  :modifier=>"",
                  :contains_ptr? => true,
-                 :args=>[ {:type=> "unsigned int", :name=>"const_param", :ptr? => false, :const? => true},
+                 :args=>[ {:type=> "unsigned int", :name=>"const_param", :ptr? => false, :const? => false},
                           {:type=>"int", :name=>"int_param", :ptr? => false, :const? => false},
                           {:type=>"int", :name=>"integer", :ptr? => false, :const? => false},
                           {:type=>"char", :name=>"character", :ptr? => false, :const? => false},
-                          {:type=>"int*", :name=>"constant", :ptr? => true, :const? => true}
+                          {:type=>"int*", :name=>"constant", :ptr? => true, :const? => false},
+                          {:type=>"int*", :name=>"const_int_ptr", :ptr? => true, :const? => true}
                         ],
-                 :args_string=>"const unsigned int const_param, int int_param, int integer, char character, int* const constant",
-                 :args_call=>"const_param, int_param, integer, character, constant" }]
+                 :args_string=>"const unsigned int const_param, int int_param, int integer, char character, int* const constant, const int* const_int_ptr",
+                 :args_call=>"const_param, int_param, integer, character, constant, const_int_ptr" }]
     result = @parser.parse("module", source)
     assert_equal(expected, result[:functions])
   end
 
   should "not be thwarted by custom types named similarly to primitive types" do
-    source = "void LemonPeel(integer param, character thing, longint * junk, constant value, int32_t const number)"
+    source = "void LemonPeel(integer param, character thing, const longint * junk, constant value, int32_t const number)"
     expected = [{:var_arg=>nil,
                  :return=>{ :type   => "void",
                             :name   => 'cmock_to_return',
@@ -854,11 +887,11 @@ class CMockHeaderParserTest < Test::Unit::TestCase
                  :contains_ptr? => true,
                  :args=>[ {:type=>"integer", :name=>"param", :ptr? => false, :const? => false},
                           {:type=>"character", :name=>"thing", :ptr? => false, :const? => false},
-                          {:type=>"longint*", :name=>"junk", :ptr? => true, :const? => false},
+                          {:type=>"longint*", :name=>"junk", :ptr? => true, :const? => true},
                           {:type=>"constant", :name=>"value", :ptr? => false, :const? => false},
-                          {:type=>"int32_t", :name=>"number", :ptr? => false, :const? => true}
+                          {:type=>"int32_t", :name=>"number", :ptr? => false, :const? => false}
                         ],
-                 :args_string=>"integer param, character thing, longint* junk, constant value, int32_t const number",
+                 :args_string=>"integer param, character thing, const longint* junk, constant value, int32_t const number",
                  :args_call=>"param, thing, junk, value, number" }]
     result = @parser.parse("module", source)
     assert_equal(expected, result[:functions])
@@ -878,8 +911,8 @@ class CMockHeaderParserTest < Test::Unit::TestCase
                  :modifier=>"",
                  :contains_ptr? => false,
                  :args=>[ {:type=>"signed char", :name=>"abc", :ptr? => false, :const? => false},
-                          {:type=>"unsigned long int", :name=>"xyz_123", :ptr? => false, :const? => true},
-                          {:type=>"unsigned int", :name=>"abc_123", :ptr? => false, :const? => true},
+                          {:type=>"unsigned long int", :name=>"xyz_123", :ptr? => false, :const? => false},
+                          {:type=>"unsigned int", :name=>"abc_123", :ptr? => false, :const? => false},
                           {:type=>"long long", :name=>"arm_of_the_law", :ptr? => false, :const? => false}
                         ],
                  :args_string=>"signed char abc, const unsigned long int xyz_123, unsigned int const abc_123, long long arm_of_the_law",
@@ -903,7 +936,7 @@ class CMockHeaderParserTest < Test::Unit::TestCase
                  :contains_ptr? => true,
                  :args=>[ {:type=>"CUSTOM_TYPE", :name=>"abc", :ptr? => false, :const? => false},
                           {:type=>"CUSTOM_TYPE*", :name=>"xyz_123", :ptr? => true, :const? => false},
-                          {:type=>"CUSTOM_TYPE", :name=>"abcxyz", :ptr? => false, :const? => true},
+                          {:type=>"CUSTOM_TYPE", :name=>"abcxyz", :ptr? => false, :const? => false},
                           {:type=>"struct CUSTOM_TYPE const*", :name=>"abc123", :ptr? => true, :const? => true}
                         ],
                  :args_string=>"CUSTOM_TYPE abc, CUSTOM_TYPE* xyz_123, CUSTOM_TYPE const abcxyz, struct CUSTOM_TYPE const* const abc123",
@@ -1018,7 +1051,7 @@ class CMockHeaderParserTest < Test::Unit::TestCase
                  :name=>"FunkyChicken",
                  :modifier=>"",
                  :contains_ptr? => false,
-                 :args=>[ {:type=>"cmock_module_func_ptr1", :name=>"func_ptr", :ptr? => false, :const? => true}
+                 :args=>[ {:type=>"cmock_module_func_ptr1", :name=>"func_ptr", :ptr? => false, :const? => false}
                         ],
                  :args_string=>"cmock_module_func_ptr1 const func_ptr",
                  :args_call=>"func_ptr" }]
@@ -1113,7 +1146,7 @@ class CMockHeaderParserTest < Test::Unit::TestCase
                  :name=>"FunkyFowl",
                  :modifier=>"",
                  :contains_ptr? => false,
-                 :args=>[ {:type=>"cmock_module_func_ptr1", :name=>"cmock_arg1", :ptr? => false, :const? => true}
+                 :args=>[ {:type=>"cmock_module_func_ptr1", :name=>"cmock_arg1", :ptr? => false, :const? => false}
                         ],
                  :args_string=>"cmock_module_func_ptr1 const cmock_arg1",
                  :args_call=>"cmock_arg1" }]
@@ -1136,7 +1169,7 @@ class CMockHeaderParserTest < Test::Unit::TestCase
                  :name=>"FunkyPidgeon",
                  :modifier=>"",
                  :contains_ptr? => false,
-                 :args=>[ {:type=>"char", :name=>"op_code", :ptr? => false, :const? => true}
+                 :args=>[ {:type=>"char", :name=>"op_code", :ptr? => false, :const? => false}
                         ],
                  :args_string=>"const char op_code",
                  :args_call=>"op_code" }]

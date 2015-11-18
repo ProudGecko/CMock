@@ -138,7 +138,7 @@ class CMockHeaderParser
       args << { :type   => (arg_type =arg_elements[0..-2].join(' ')),
                 :name   => arg_elements[-1],
                 :ptr?   => divine_ptr(arg_type),
-                :const? => arg_array.include?('const')
+                :const? => (arg =~ /const.*\*/) != nil
               }
     end
     return args
